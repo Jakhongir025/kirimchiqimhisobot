@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moliya va Aviabilet Nazorati (To'lov Nazorati bilan)</title>
+    <title>Moliya va Aviabilet Nazorati</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -52,7 +52,6 @@
         .btn-add { background: var(--success); color: white; border: none; cursor: pointer; font-weight: bold; height: 48px; margin-top: auto; }
         .btn-excel { background: var(--info); color: white; border: none; cursor: pointer; font-weight: bold; padding: 10px 20px; border-radius: 8px; }
 
-        /* Holat tugmalari stili */
         .status-badge {
             padding: 6px 12px;
             border-radius: 20px;
@@ -95,16 +94,23 @@
 <div class="container">
     <h2>Moliya va To'lov Nazorati</h2>
 
-    <!-- Ma'lumot kiritish -->
     <div class="inputs">
+        <!-- YANGI: SANA KIRITISH -->
+        <div class="input-group">
+            <label>Sana</label>
+            <input type="date" id="customDate">
+        </div>
+
         <div class="input-group">
             <label>Kimga / Kimdan</label>
             <input type="text" id="name" placeholder="Ism sharif">
         </div>
+
         <div class="input-group">
             <label>Summa (so'm)</label>
             <input type="text" id="amount" placeholder="0" oninput="formatInput(this)">
         </div>
+
         <div class="input-group">
             <label>Bo'lim</label>
             <select id="category" onchange="toggleFlightFields()">
@@ -131,6 +137,7 @@
             <label>Izoh</label>
             <input type="text" id="desc" placeholder="...">
         </div>
+
         <div class="input-group">
             <label>Turi</label>
             <select id="type">
@@ -138,6 +145,7 @@
                 <option value="income">Pul oldim (+)</option>
             </select>
         </div>
+
         <div class="input-group">
             <label>To'lov holati</label>
             <select id="initialStatus">
@@ -145,17 +153,16 @@
                 <option value="unpaid">Hali to'lov qilmadi</option>
             </select>
         </div>
+
         <button class="btn-add" onclick="addItem()">Ro'yxatga qo'shish</button>
     </div>
 
-    <!-- Statistika -->
     <div class="summary-boxes">
         <div class="box box-income"><h3>Jami Kirim</h3><div id="totalIncome">0</div></div>
         <div class="box box-expense"><h3>Jami Chiqim</h3><div id="totalExpense">0</div></div>
         <div class="box box-balance"><h3>Balans</h3><div id="totalBalance">0</div></div>
     </div>
 
-    <!-- Jadval -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h3 style="margin: 0;">Amallar tarixi</h3>
         <button class="btn-excel" onclick="exportToExcel()">📥 Excelga yuklash</button>
@@ -169,7 +176,7 @@
                     <th>Ism</th>
                     <th>Bo'lim / Tafsilot</th>
                     <th>Summa (so'm)</th>
-                    <th>To'lov holati (O'zgartirish uchun bosing)</th>
+                    <th>To'lov holati</th>
                     <th>Izoh</th>
                     <th>Amal</th>
                 </tr>
@@ -181,6 +188,12 @@
 
 <script>
     let data = JSON.parse(localStorage.getItem('paymentControlData')) || [];
+
+    // Sahifa yuklanganda bugungi sanani inputga qo'yish
+    window.onload = function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('customDate').value = today;
+    };
 
     function formatNumber(num) {
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -198,6 +211,7 @@
     }
 
     function addItem() {
+        const selectedDate = document.getElementById('customDate').value; // Foydalanuvchi tanlagan sana
         const name = document.getElementById('name').value;
         const amountStr = document.getElementById('amount').value.replace(/\s/g, "");
         const category = document.getElementById('category').value;
@@ -206,25 +220,28 @@
         const desc = document.getElementById('desc').value;
         const type = document.getElementById('type').value;
         const status = document.getElementById('initialStatus').value;
-        const date = new Date().toLocaleString('uz-UZ');
 
-        if(!name || !amountStr) { alert("Ism va summani kiriting!"); return; }
+        if(!selectedDate || !name || !amountStr) { 
+            alert("Sana, ism va summani kiritish majburiy!"); 
+            return; 
+        }
 
         const newItem = {
             id: Date.now(),
-            date, name,
+            date: selectedDate, // Tanlangan sana saqlanadi
+            name,
             amount: parseFloat(amountStr),
             category,
             route: category === 'Aviabilet' ? route : '',
             ticketNum: category === 'Aviabilet' ? ticketNum : '',
             desc, type,
-            status: status // 'paid' yoki 'unpaid'
+            status: status
         };
 
         data.push(newItem);
         updateUI();
         
-        // Inputlarni tozalash
+        // Inputlarni tozalash (sanadan tashqari)
         document.getElementById('name').value = '';
         document.getElementById('amount').value = '';
         document.getElementById('desc').value = '';
@@ -232,7 +249,6 @@
         document.getElementById('ticketNum').value = '';
     }
 
-    // Holatni o'zgartirish funksiyasi
     function toggleStatus(id) {
         const index = data.findIndex(item => item.id === id);
         if (index !== -1) {
@@ -255,6 +271,9 @@
 
         let income = 0; let expense = 0;
 
+        // Ma'lumotlarni sanasi bo'yicha tartiblash (ixtiyoriy)
+        data.sort((a, b) => new Date(b.date) - new Date(a.date));
+
         data.forEach(item => {
             if(item.type === 'income') income += item.amount;
             else expense += item.amount;
@@ -263,7 +282,7 @@
             
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><small>${item.date}</small></td>
+                <td>${item.date}</td>
                 <td><strong>${item.name}</strong></td>
                 <td>
                     <b>${item.category}</b>
@@ -280,7 +299,7 @@
                 <td><small>${item.desc || '-'}</small></td>
                 <td><button class="delete-btn" onclick="deleteItem(${item.id})">O'chirish</button></td>
             `;
-            listBody.prepend(tr);
+            listBody.appendChild(tr);
         });
 
         document.getElementById('totalIncome').innerText = formatNumber(income);
