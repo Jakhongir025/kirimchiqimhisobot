@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moliya va Aviabilet Nazorati (To'lov Nazorati bilan)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --info: #2980b9;
+            --warning: #f39c12;
+            --light: #f8f9fa;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f7; padding: 20px; color: #333; }
+        .container { max-width: 1300px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        h2 { text-align: center; color: var(--primary); margin-bottom: 30px; }
+
+        /* Inputlar paneli */
+        .inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            background: var(--light);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border: 1px solid #ddd;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 12px; font-weight: bold; color: #666; }
+
+        input, select, button { padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 14px; outline: none; }
+        
+        /* Aviabilet detallari */
+        #flight-details {
+            grid-column: 1 / -1;
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            background: #e1f5fe;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px dashed var(--info);
+        }
+
+        .btn-add { background: var(--success); color: white; border: none; cursor: pointer; font-weight: bold; height: 48px; margin-top: auto; }
+        .btn-excel { background: var(--info); color: white; border: none; cursor: pointer; font-weight: bold; padding: 10px 20px; border-radius: 8px; }
+
+        /* Holat tugmalari stili */
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .status-paid { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-unpaid { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        .summary-boxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .box { padding: 20px; border-radius: 15px; color: white; }
+        .box h3 { margin: 0; font-size: 14px; opacity: 0.9; }
+        .box div { font-size: 24px; font-weight: bold; margin-top: 10px; }
+        
+        .box-income { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .box-expense { background: linear-gradient(135deg, #e74c3c, #ff7675); }
+        .box-balance { background: linear-gradient(135deg, #2c3e50, #34495e); }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; background: white; min-width: 1100px; }
+        th, td { padding: 15px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #f4f6f8; color: var(--primary); }
+        
+        .flight-info { font-size: 12px; color: #2980b9; display: block; margin-top: 4px; }
+        .delete-btn { background: #eee; color: #666; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+        .delete-btn:hover { background: #e74c3c; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Moliya va To'lov Nazorati</h2>
+
+    <!-- Ma'lumot kiritish -->
+    <div class="inputs">
+        <div class="input-group">
+            <label>Kimga / Kimdan</label>
+            <input type="text" id="name" placeholder="Ism sharif">
+        </div>
+        <div class="input-group">
+            <label>Summa (so'm)</label>
+            <input type="text" id="amount" placeholder="0" oninput="formatInput(this)">
+        </div>
+        <div class="input-group">
+            <label>Bo'lim</label>
+            <select id="category" onchange="toggleFlightFields()">
+                <option value="Aviabilet">Aviabilet</option>
+                <option value="Qarz">Qarzlar</option>
+                <option value="Oziq-ovqat">Oziq-ovqat</option>
+                <option value="Xizmatlar">Xizmatlar</option>
+                <option value="Boshqa">Boshqa xarajatlar</option>
+            </select>
+        </div>
+
+        <div id="flight-details">
+            <div class="input-group">
+                <label>Yo'nalish (Qayerdan - Qayerga)</label>
+                <input type="text" id="route" placeholder="Toshkent - Istanbul">
+            </div>
+            <div class="input-group">
+                <label>Bilet Raqami</label>
+                <input type="text" id="ticketNum" placeholder="235-000000000">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Izoh</label>
+            <input type="text" id="desc" placeholder="...">
+        </div>
+        <div class="input-group">
+            <label>Turi</label>
+            <select id="type">
+                <option value="expense">Xarajat / Berdim (-)</option>
+                <option value="income">Pul oldim (+)</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>To'lov holati</label>
+            <select id="initialStatus">
+                <option value="paid">To'lov qildi</option>
+                <option value="unpaid">Hali to'lov qilmadi</option>
+            </select>
+        </div>
+        <button class="btn-add" onclick="addItem()">Ro'yxatga qo'shish</button>
+    </div>
+
+    <!-- Statistika -->
+    <div class="summary-boxes">
+        <div class="box box-income"><h3>Jami Kirim</h3><div id="totalIncome">0</div></div>
+        <div class="box box-expense"><h3>Jami Chiqim</h3><div id="totalExpense">0</div></div>
+        <div class="box box-balance"><h3>Balans</h3><div id="totalBalance">0</div></div>
+    </div>
+
+    <!-- Jadval -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="margin: 0;">Amallar tarixi</h3>
+        <button class="btn-excel" onclick="exportToExcel()">📥 Excelga yuklash</button>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Sana</th>
+                    <th>Ism</th>
+                    <th>Bo'lim / Tafsilot</th>
+                    <th>Summa (so'm)</th>
+                    <th>To'lov holati (O'zgartirish uchun bosing)</th>
+                    <th>Izoh</th>
+                    <th>Amal</th>
+                </tr>
+            </thead>
+            <tbody id="listBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let data = JSON.parse(localStorage.getItem('paymentControlData')) || [];
+
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    }
+
+    function formatInput(input) {
+        let value = input.value.replace(/\D/g, "");
+        input.value = formatNumber(value);
+    }
+
+    function toggleFlightFields() {
+        const cat = document.getElementById('category').value;
+        const flightDiv = document.getElementById('flight-details');
+        flightDiv.style.display = (cat === 'Aviabilet') ? 'grid' : 'none';
+    }
+
+    function addItem() {
+        const name = document.getElementById('name').value;
+        const amountStr = document.getElementById('amount').value.replace(/\s/g, "");
+        const category = document.getElementById('category').value;
+        const route = document.getElementById('route').value;
+        const ticketNum = document.getElementById('ticketNum').value;
+        const desc = document.getElementById('desc').value;
+        const type = document.getElementById('type').value;
+        const status = document.getElementById('initialStatus').value;
+        const date = new Date().toLocaleString('uz-UZ');
+
+        if(!name || !amountStr) { alert("Ism va summani kiriting!"); return; }
+
+        const newItem = {
+            id: Date.now(),
+            date, name,
+            amount: parseFloat(amountStr),
+            category,
+            route: category === 'Aviabilet' ? route : '',
+            ticketNum: category === 'Aviabilet' ? ticketNum : '',
+            desc, type,
+            status: status // 'paid' yoki 'unpaid'
+        };
+
+        data.push(newItem);
+        updateUI();
+        
+        // Inputlarni tozalash
+        document.getElementById('name').value = '';
+        document.getElementById('amount').value = '';
+        document.getElementById('desc').value = '';
+        document.getElementById('route').value = '';
+        document.getElementById('ticketNum').value = '';
+    }
+
+    // Holatni o'zgartirish funksiyasi
+    function toggleStatus(id) {
+        const index = data.findIndex(item => item.id === id);
+        if (index !== -1) {
+            data[index].status = (data[index].status === 'paid') ? 'unpaid' : 'paid';
+            updateUI();
+        }
+    }
+
+    function deleteItem(id) {
+        if(confirm("Ushbu ma'lumot o'chirilsinmi?")) {
+            data = data.filter(item => item.id !== id);
+            updateUI();
+        }
+    }
+
+    function updateUI() {
+        localStorage.setItem('paymentControlData', JSON.stringify(data));
+        const listBody = document.getElementById('listBody');
+        listBody.innerHTML = '';
+
+        let income = 0; let expense = 0;
+
+        data.forEach(item => {
+            if(item.type === 'income') income += item.amount;
+            else expense += item.amount;
+
+            const isPaid = item.status === 'paid';
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><small>${item.date}</small></td>
+                <td><strong>${item.name}</strong></td>
+                <td>
+                    <b>${item.category}</b>
+                    ${item.category === 'Aviabilet' ? `<span class="flight-info">📍 ${item.route} <br> 🎫 ${item.ticketNum}</span>` : ''}
+                </td>
+                <td style="font-weight: bold; color: ${item.type === 'income' ? 'green' : 'red'}">
+                    ${item.type === 'income' ? '+' : '-'}${formatNumber(item.amount)}
+                </td>
+                <td>
+                    <button class="status-badge ${isPaid ? 'status-paid' : 'status-unpaid'}" onclick="toggleStatus(${item.id})">
+                        ${isPaid ? '✅ To\'lov qildi' : '❌ To\'lov qilmadi'}
+                    </button>
+                </td>
+                <td><small>${item.desc || '-'}</small></td>
+                <td><button class="delete-btn" onclick="deleteItem(${item.id})">O'chirish</button></td>
+            `;
+            listBody.prepend(tr);
+        });
+
+        document.getElementById('totalIncome').innerText = formatNumber(income);
+        document.getElementById('totalExpense').innerText = formatNumber(expense);
+        document.getElementById('totalBalance').innerText = formatNumber(income - expense);
+    }
+
+    function exportToExcel() {
+        if(data.length === 0) return;
+        const excelData = data.map(item => ({
+            "Sana": item.date,
+            "Ism": item.name,
+            "Bo'lim": item.category,
+            "Yo'nalish": item.route,
+            "Bilet Raqami": item.ticketNum,
+            "Summa": item.amount,
+            "Turi": item.type === 'income' ? "Kirim" : "Chiqim",
+            "To'lov Holati": item.status === 'paid' ? "To'lov qildi" : "Hali to'lov qilmadi",
+            "Izoh": item.desc
+        }));
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Moliya_Hisoboti");
+        XLSX.writeFile(workbook, "Moliya_va_To'lovlar.xlsx");
+    }
+
+    toggleFlightFields();
+    updateUI();
+</script>
+
+</body>
+</html>
