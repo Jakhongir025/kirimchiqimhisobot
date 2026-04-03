@@ -14,6 +14,7 @@
             --warning: #f39c12;
             --light: #f8f9fa;
             --white: #ffffff;
+            --gray: #95a5a6;
         }
 
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f7; padding: 15px; color: #333; margin: 0; }
@@ -21,7 +22,6 @@
         
         h2 { text-align: center; color: var(--primary); margin-bottom: 25px; }
 
-        /* Kiritish paneli */
         .inputs {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -36,12 +36,10 @@
         .input-group { display: flex; flex-direction: column; gap: 5px; }
         label { font-size: 12px; font-weight: bold; color: #555; text-transform: uppercase; }
 
-        input, select, button { padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 15px; outline: none; }
+        input, select, button, textarea { padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 15px; outline: none; font-family: inherit; }
         
-        /* SUMMA VA VALYUTA BIRGALIKDA */
-        .amount-wrapper { display: flex; gap: 0; border: 1px solid #ccc; border-radius: 10px; overflow: hidden; background: white; }
-        .amount-wrapper input { border: none; flex: 1; border-radius: 0; }
-        .amount-wrapper select { border: none; background: #eee; width: 80px; border-radius: 0; cursor: pointer; font-weight: bold; }
+        /* Summa kiritish stili */
+        .amount-input { border: 2px solid var(--info); font-weight: bold; background: #fff; }
 
         #flight-details {
             grid-column: 1 / -1;
@@ -53,6 +51,8 @@
             border-radius: 10px;
             border: 1px dashed var(--info);
         }
+
+        .full-width { grid-column: 1 / -1; }
 
         .btn-add { background: var(--success); color: white; border: none; cursor: pointer; font-weight: bold; height: 50px; margin-top: auto; }
         .btn-update { background: var(--warning); color: white; border: none; cursor: pointer; font-weight: bold; height: 50px; margin-top: auto; display: none; }
@@ -66,7 +66,6 @@
         .box { padding: 20px; border-radius: 15px; color: white; }
         .box h3 { margin: 0 0 15px 0; font-size: 14px; opacity: 0.9; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; text-align: center; }
         .curr-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-bottom: 8px; }
-        .curr-row span:last-child { font-family: 'Courier New', Courier, monospace; }
 
         .box-income { background: linear-gradient(135deg, #27ae60, #2ecc71); }
         .box-expense { background: linear-gradient(135deg, #e74c3c, #ff7675); }
@@ -77,23 +76,24 @@
         .search-bar input { width: 100%; padding: 15px 15px 15px 45px; box-sizing: border-box; border-radius: 12px; border: 2px solid var(--info); font-size: 16px; }
         .search-bar::before { content: '🔍'; position: absolute; left: 15px; top: 15px; font-size: 20px; }
 
-        /* Bo'limlar */
+        /* Jadval */
         .date-section { margin-top: 25px; border-radius: 15px; overflow: hidden; border: 1px solid #ddd; background: white; }
         .date-header { background: #f1f5f9; padding: 15px 20px; font-weight: bold; color: var(--primary); border-bottom: 2px solid #cbd5e1; }
 
         .table-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        th, td { padding: 15px; border-bottom: 1px solid #eee; text-align: left; }
-        th { background: #f8fafc; color: #64748b; font-size: 13px; text-transform: uppercase; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
+        th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; }
 
+        .comment-text { font-size: 13px; color: #666; font-style: italic; display: block; margin-top: 5px; max-width: 300px; }
         .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; border: none; cursor: pointer; }
         .badge-paid { background: #dcfce7; color: #166534; }
         .badge-unpaid { background: #fee2e2; color: #991b1b; }
 
-        .btn-edit { background: #fef9c3; color: #854d0e; padding: 8px; border-radius: 8px; cursor: pointer; border: none; margin-right: 5px; }
+        .btn-edit { background: #fef9c3; color: #854d0e; padding: 8px; border-radius: 8px; cursor: pointer; border: none; }
         .btn-del { background: #fee2e2; color: #991b1b; padding: 8px; border-radius: 8px; cursor: pointer; border: none; }
 
-        .footer-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .footer-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
         .btn-excel { background: var(--info); color: white; padding: 12px 25px; border-radius: 10px; cursor: pointer; border: none; font-weight: bold; }
     </style>
 </head>
@@ -113,15 +113,8 @@
             <input type="text" id="name" placeholder="F.I.SH">
         </div>
         <div class="input-group">
-            <label>Summa va Valyuta</label>
-            <div class="amount-wrapper">
-                <input type="text" id="amount" placeholder="0" oninput="formatInput(this)">
-                <select id="currency">
-                    <option value="UZS">UZS</option>
-                    <option value="USD">USD</option>
-                    <option value="RUB">RUB</option>
-                </select>
-            </div>
+            <label>Summa (Masalan: 100 usd, 50000 uzs)</label>
+            <input type="text" id="amount" class="amount-input" placeholder="Summa va valyuta...">
         </div>
         <div class="input-group">
             <label>Bo'lim</label>
@@ -131,24 +124,31 @@
                 <option value="Xarajat">Boshqa xarajatlar</option>
             </select>
         </div>
+        
         <div id="flight-details">
-            <div class="input-group"><label>Yo'nalish (Qayerdan-Qayerga)</label><input type="text" id="route" placeholder="Toshkent-Seul"></div>
-            <div class="input-group"><label>Bilet Raqami №</label><input type="text" id="ticketNum" placeholder="№ 12345678"></div>
+            <div class="input-group"><label>Yo'nalish</label><input type="text" id="route" placeholder="Toshkent-Seul"></div>
+            <div class="input-group"><label>Bilet №</label><input type="text" id="ticketNum" placeholder="12345678"></div>
         </div>
+
         <div class="input-group">
             <label>Turi</label>
             <select id="type">
-                <option value="income">Pul oldim (+)</option>
-                <option value="expense">Pul berdim (-)</option>
+                <option value="income">Kirim (+)</option>
+                <option value="expense">Chiqim (-)</option>
             </select>
         </div>
         <div class="input-group">
             <label>Holati</label>
             <select id="status">
-                <option value="paid">To'lov qildi</option>
-                <option value="unpaid">Hali to'lamadi</option>
+                <option value="paid">To'lov qilingan</option>
+                <option value="unpaid">Kutilmoqda (Qarz)</option>
             </select>
         </div>
+        <div class="input-group full-width">
+            <label>Izoh</label>
+            <textarea id="comment" rows="1" placeholder="Batafsil ma'lumot yozing..."></textarea>
+        </div>
+
         <button class="btn-add" id="btnAdd" onclick="addItem()">Qo'shish</button>
         <button class="btn-update" id="btnUpdate" onclick="saveEdit()">Saqlash</button>
         <button class="btn-cancel" id="btnCancel" onclick="cancelEdit()">Bekor</button>
@@ -176,24 +176,21 @@
         </div>
     </div>
 
-    <!-- Qidiruv -->
     <div class="search-bar">
-        <input type="text" id="searchInput" placeholder="Ism, bilet raqami, yo'nalish yoki summa orqali qidirish..." oninput="updateUI()">
+        <input type="text" id="searchInput" placeholder="Ism, bilet, izoh yoki summa bo'yicha qidirish..." oninput="updateUI()">
     </div>
 
-    <!-- Excel va Ommaviy Amallar -->
     <div class="footer-actions">
         <button class="btn-excel" onclick="exportToExcel()">📥 Excelga yuklash</button>
-        <button class="btn-excel" style="background: var(--danger);" onclick="deleteSelected()">🗑️ Tanlanganlarni o'chirish</button>
-        <button class="btn-excel" style="background: var(--primary);" onclick="clearAll()">⚠️ Hammasini o'chirish</button>
+        <button class="btn-excel" style="background: var(--danger);" onclick="deleteSelected()">🗑️ O'chirish</button>
+        <button class="btn-excel" style="background: var(--primary);" onclick="clearAll()">⚠️ Hammasini tozalash</button>
     </div>
 
-    <!-- Jadval -->
     <div id="tableContent"></div>
 </div>
 
 <script>
-    let db = JSON.parse(localStorage.getItem('myFinData')) || [];
+    let db = JSON.parse(localStorage.getItem('myFinDataV2')) || [];
     let editId = null;
 
     window.onload = () => {
@@ -202,31 +199,42 @@
         updateUI();
     };
 
-    function formatNumber(n) { return Number(n).toLocaleString('ru-RU'); }
-    function formatInput(el) {
-        let val = el.value.replace(/\D/g, "");
-        el.value = val ? Number(val).toLocaleString('ru-RU') : "";
-    }
-
     function toggleFlightFields() {
         const cat = document.getElementById('category').value;
         document.getElementById('flight-details').style.display = (cat === 'Aviabilet') ? 'grid' : 'none';
     }
 
-    function addItem() {
-        const amountStr = document.getElementById('amount').value.replace(/\s/g, "");
-        const name = document.getElementById('name').value;
-        if(!amountStr || !name) return alert("Ism va summani kiriting!");
+    // Summa va valyutani ajratib olish funksiyasi
+    function parseAmount(str) {
+        let clean = str.toLowerCase().replace(/\s/g, '').replace(/,/g, '.');
+        let amount = parseFloat(clean.replace(/[^\d.]/g, '')) || 0;
+        let currency = "UZS"; // default
 
+        if (clean.includes("usd") || clean.includes("$")) currency = "USD";
+        else if (clean.includes("rub")) currency = "RUB";
+        
+        return { amount, currency };
+    }
+
+    function formatNumber(n) { return Number(n).toLocaleString('ru-RU'); }
+
+    function addItem() {
+        const name = document.getElementById('name').value;
+        const amountRaw = document.getElementById('amount').value;
+        if(!name || !amountRaw) return alert("Ism va summani kiriting!");
+
+        const parsed = parseAmount(amountRaw);
+        
         const item = {
             id: Date.now(),
             date: document.getElementById('customDate').value,
             name: name,
-            amount: parseFloat(amountStr),
-            currency: document.getElementById('currency').value,
+            amount: parsed.amount,
+            currency: parsed.currency,
             category: document.getElementById('category').value,
             route: document.getElementById('route').value,
             ticketNum: document.getElementById('ticketNum').value,
+            comment: document.getElementById('comment').value,
             type: document.getElementById('type').value,
             status: document.getElementById('status').value
         };
@@ -242,11 +250,11 @@
         const item = db.find(i => i.id === id);
         document.getElementById('customDate').value = item.date;
         document.getElementById('name').value = item.name;
-        document.getElementById('amount').value = formatNumber(item.amount);
-        document.getElementById('currency').value = item.currency;
+        document.getElementById('amount').value = `${item.amount} ${item.currency}`;
         document.getElementById('category').value = item.category;
         document.getElementById('route').value = item.route;
         document.getElementById('ticketNum').value = item.ticketNum;
+        document.getElementById('comment').value = item.comment;
         document.getElementById('type').value = item.type;
         document.getElementById('status').value = item.status;
         
@@ -254,23 +262,24 @@
         document.getElementById('btnAdd').style.display = 'none';
         document.getElementById('btnUpdate').style.display = 'block';
         document.getElementById('btnCancel').style.display = 'block';
-        document.getElementById('formTitle').innerText = "Ma'lumotni tahrirlash";
-        window.scrollTo(0,0);
+        document.getElementById('formTitle').innerText = "Tahrirlash rejimi";
+        window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
     function saveEdit() {
         const idx = db.findIndex(i => i.id === editId);
-        const amountStr = document.getElementById('amount').value.replace(/\s/g, "");
+        const parsed = parseAmount(document.getElementById('amount').value);
         
         db[idx] = {
             ...db[idx],
             date: document.getElementById('customDate').value,
             name: document.getElementById('name').value,
-            amount: parseFloat(amountStr),
-            currency: document.getElementById('currency').value,
+            amount: parsed.amount,
+            currency: parsed.currency,
             category: document.getElementById('category').value,
             route: document.getElementById('route').value,
             ticketNum: document.getElementById('ticketNum').value,
+            comment: document.getElementById('comment').value,
             type: document.getElementById('type').value,
             status: document.getElementById('status').value
         };
@@ -294,6 +303,7 @@
         document.getElementById('amount').value = "";
         document.getElementById('route').value = "";
         document.getElementById('ticketNum').value = "";
+        document.getElementById('comment').value = "";
         document.getElementById('customDate').value = new Date().toISOString().split('T')[0];
     }
 
@@ -304,15 +314,14 @@
 
         let totals = { inc: {UZS:0, USD:0, RUB:0}, exp: {UZS:0, USD:0, RUB:0} };
 
-        // Filtrlash
         let filtered = db.filter(i => 
             i.name.toLowerCase().includes(search) || 
             i.ticketNum.toLowerCase().includes(search) || 
             i.route.toLowerCase().includes(search) ||
+            i.comment.toLowerCase().includes(search) ||
             i.amount.toString().includes(search)
         );
 
-        // Statistika
         db.forEach(i => {
             if(i.type === 'income') totals.inc[i.currency] += i.amount;
             else totals.exp[i.currency] += i.amount;
@@ -324,7 +333,6 @@
             document.getElementById(`bal${c}`).innerText = formatNumber(totals.inc[c] - totals.exp[c]);
         });
 
-        // Guruhlangan jadval (Sana bo'yicha)
         const groups = filtered.reduce((acc, item) => {
             if (!acc[item.date]) acc[item.date] = [];
             acc[item.date].push(item);
@@ -337,14 +345,14 @@
             const section = document.createElement('div');
             section.className = 'date-section';
             section.innerHTML = `
-                <div class="date-header">📅 Sana: ${date}</div>
+                <div class="date-header">📅 ${date}</div>
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
                                 <th><input type="checkbox" onclick="selectAll(this, '${date}')"></th>
-                                <th>Ism</th>
-                                <th>Bo'lim / Tafsilot</th>
+                                <th>F.I.SH</th>
+                                <th>Bo'lim va Izoh</th>
                                 <th>Summa</th>
                                 <th>Holat</th>
                                 <th>Amallar</th>
@@ -353,13 +361,14 @@
                         <tbody id="rows-${date}">
                             ${groups[date].map(item => `
                                 <tr>
-                                    <td><input type="checkbox" class="chk-item" data-id="${item.id}" data-date="${date}"></td>
+                                    <td><input type="checkbox" class="chk-item" data-id="${item.id}"></td>
                                     <td><strong>${item.name}</strong></td>
                                     <td>
-                                        <span style="color:var(--info)">${item.category}</span>
-                                        ${item.category==='Aviabilet' ? `<br><small>📍 ${item.route}<br>🎫 ${item.ticketNum}</small>` : ''}
+                                        <span style="color:var(--info); font-weight:bold;">${item.category}</span>
+                                        ${item.category==='Aviabilet' ? `<br><small>📍 ${item.route} | 🎫 ${item.ticketNum}</small>` : ''}
+                                        <span class="comment-text">${item.comment ? '💬 ' + item.comment : ''}</span>
                                     </td>
-                                    <td style="font-weight:bold; color:${item.type==='income'?'green':'red'}">
+                                    <td style="font-weight:bold; color:${item.type==='income'?'#27ae60':'#e74c3c'}">
                                         ${item.type==='income'?'+':'-'}${formatNumber(item.amount)} ${item.currency}
                                     </td>
                                     <td>
@@ -409,19 +418,31 @@
     }
 
     function clearAll() {
-        if(confirm("Barcha ma'lumotlar o'chib ketadi!")) {
+        if(confirm("Barcha ma'lumotlar butunlay o'chib ketadi! Rozimisiz?")) {
             db = []; saveDB(); updateUI();
         }
     }
 
-    function saveDB() { localStorage.setItem('myFinData', JSON.stringify(db)); }
+    function saveDB() { localStorage.setItem('myFinDataV2', JSON.stringify(db)); }
 
     function exportToExcel() {
         if(!db.length) return;
-        const ws = XLSX.utils.json_to_sheet(db);
+        const dataForExcel = db.map(i => ({
+            Sana: i.date,
+            Ism: i.name,
+            Summa: i.amount,
+            Valyuta: i.currency,
+            Tur: i.type === 'income' ? 'Kirim' : 'Chiqim',
+            Bolim: i.category,
+            Yonalish: i.route,
+            Bilet_N: i.ticketNum,
+            Izoh: i.comment,
+            Holat: i.status === 'paid' ? 'Tolangan' : 'Qarz'
+        }));
+        const ws = XLSX.utils.json_to_sheet(dataForExcel);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Hisobot");
-        XLSX.writeFile(wb, "Moliya_Hisoboti.xlsx");
+        XLSX.writeFile(wb, "Moliya_Nazorati_Hisobot.xlsx");
     }
 </script>
 </body>
