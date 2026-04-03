@@ -13,6 +13,7 @@
             --info: #2980b9;
             --warning: #f39c12;
             --light: #f8f9fa;
+            --dark: #34495e;
         }
 
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f7; padding: 20px; color: #333; }
@@ -50,7 +51,11 @@
         .btn-add { background: var(--success); color: white; border: none; cursor: pointer; font-weight: bold; height: 48px; margin-top: auto; }
         .btn-update { background: var(--warning); color: white; border: none; cursor: pointer; font-weight: bold; height: 48px; margin-top: auto; display: none; }
         .btn-cancel { background: #95a5a6; color: white; border: none; cursor: pointer; font-weight: bold; height: 48px; margin-top: auto; display: none; }
+        
+        .action-buttons { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
         .btn-excel { background: var(--info); color: white; border: none; cursor: pointer; font-weight: bold; padding: 10px 20px; border-radius: 8px; }
+        .btn-delete-selected { background: #e67e22; color: white; border: none; cursor: pointer; font-weight: bold; padding: 10px 20px; border-radius: 8px; }
+        .btn-clear-all { background: var(--danger); color: white; border: none; cursor: pointer; font-weight: bold; padding: 10px 20px; border-radius: 8px; }
 
         .status-badge {
             padding: 6px 12px;
@@ -81,7 +86,7 @@
 
         .table-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; background: white; min-width: 1100px; }
-        th, td { padding: 15px; border-bottom: 1px solid #eee; text-align: left; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
         th { background: #f4f6f8; color: var(--primary); }
         
         .flight-info { font-size: 12px; color: #2980b9; display: block; margin-top: 4px; }
@@ -90,7 +95,9 @@
         .edit-btn { background: #f1c40f; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
         .delete-btn { background: #eee; color: #666; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
         .delete-btn:hover { background: #e74c3c; color: white; }
-        .edit-btn:hover { background: #d4ac0d; }
+
+        /* Checkbox stili */
+        .select-row { width: 18px; height: 18px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -103,17 +110,14 @@
             <label>Sana</label>
             <input type="date" id="customDate">
         </div>
-
         <div class="input-group">
             <label>Kimga / Kimdan</label>
             <input type="text" id="name" placeholder="Ism sharif">
         </div>
-
         <div class="input-group">
             <label>Summa (so'm)</label>
             <input type="text" id="amount" placeholder="0" oninput="formatInput(this)">
         </div>
-
         <div class="input-group">
             <label>Bo'lim</label>
             <select id="category" onchange="toggleFlightFields()">
@@ -124,7 +128,6 @@
                 <option value="Boshqa">Boshqa xarajatlar</option>
             </select>
         </div>
-
         <div id="flight-details">
             <div class="input-group">
                 <label>Yo'nalish</label>
@@ -135,12 +138,10 @@
                 <input type="text" id="ticketNum" placeholder="235-000000000">
             </div>
         </div>
-
         <div class="input-group">
             <label>Izoh</label>
             <input type="text" id="desc" placeholder="...">
         </div>
-
         <div class="input-group">
             <label>Turi</label>
             <select id="type">
@@ -148,7 +149,6 @@
                 <option value="income">Pul oldim (+)</option>
             </select>
         </div>
-
         <div class="input-group">
             <label>To'lov holati</label>
             <select id="initialStatus">
@@ -156,8 +156,6 @@
                 <option value="unpaid">Hali to'lov qilmadi</option>
             </select>
         </div>
-
-        <!-- Tugmalar -->
         <button class="btn-add" id="btnAdd" onclick="addItem()">Ro'yxatga qo'shish</button>
         <button class="btn-update" id="btnUpdate" onclick="saveEdit()">O'zgarishlarni saqlash</button>
         <button class="btn-cancel" id="btnCancel" onclick="cancelEdit()">Bekor qilish</button>
@@ -169,20 +167,22 @@
         <div class="box box-balance"><h3>Balans</h3><div id="totalBalance">0</div></div>
     </div>
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h3 style="margin: 0;">Amallar tarixi</h3>
+    <div class="action-buttons">
         <button class="btn-excel" onclick="exportToExcel()">📥 Excelga yuklash</button>
+        <button class="btn-delete-selected" onclick="deleteSelected()">🗑️ Tanlanganlarni o'chirish</button>
+        <button class="btn-clear-all" onclick="clearAllData()">⚠️ Hammasini tozalash</button>
     </div>
 
     <div class="table-container">
         <table>
             <thead>
                 <tr>
+                    <th><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
                     <th>Sana</th>
                     <th>Ism</th>
-                    <th>Bo'lim / Tafsilot</th>
-                    <th>Summa (so'm)</th>
-                    <th>To'lov holati</th>
+                    <th>Bo'lim</th>
+                    <th>Summa</th>
+                    <th>Holat</th>
                     <th>Izoh</th>
                     <th>Amallar</th>
                 </tr>
@@ -194,22 +194,16 @@
 
 <script>
     let data = JSON.parse(localStorage.getItem('paymentControlData')) || [];
-    let editId = null; // Tahrirlanayotgan qator IDsi
+    let editId = null;
 
-    window.onload = function() {
-        resetDate();
-        updateUI();
-    };
+    window.onload = () => { resetDate(); updateUI(); };
 
     function resetDate() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('customDate').value = today;
+        document.getElementById('customDate').value = new Date().toISOString().split('T')[0];
     }
 
-    function formatNumber(num) {
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-    }
-
+    function formatNumber(num) { return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
+    
     function formatInput(input) {
         let value = input.value.replace(/\D/g, "");
         input.value = formatNumber(value);
@@ -217,35 +211,25 @@
 
     function toggleFlightFields() {
         const cat = document.getElementById('category').value;
-        const flightDiv = document.getElementById('flight-details');
-        flightDiv.style.display = (cat === 'Aviabilet') ? 'grid' : 'none';
+        document.getElementById('flight-details').style.display = (cat === 'Aviabilet') ? 'grid' : 'none';
     }
 
     function addItem() {
-        const selectedDate = document.getElementById('customDate').value;
+        const date = document.getElementById('customDate').value;
         const name = document.getElementById('name').value;
-        const amountStr = document.getElementById('amount').value.replace(/\s/g, "");
-        const category = document.getElementById('category').value;
-        const route = document.getElementById('route').value;
-        const ticketNum = document.getElementById('ticketNum').value;
-        const desc = document.getElementById('desc').value;
-        const type = document.getElementById('type').value;
-        const status = document.getElementById('initialStatus').value;
-
-        if(!selectedDate || !name || !amountStr) { 
-            alert("Sana, ism va summani kiritish majburiy!"); 
-            return; 
-        }
+        const amount = document.getElementById('amount').value.replace(/\s/g, "");
+        if(!date || !name || !amount) return alert("Sana, ism va summani kiriting!");
 
         const newItem = {
             id: Date.now(),
-            date: selectedDate,
-            name,
-            amount: parseFloat(amountStr),
-            category,
-            route: category === 'Aviabilet' ? route : '',
-            ticketNum: category === 'Aviabilet' ? ticketNum : '',
-            desc, type, status
+            date, name,
+            amount: parseFloat(amount),
+            category: document.getElementById('category').value,
+            route: document.getElementById('route').value,
+            ticketNum: document.getElementById('ticketNum').value,
+            desc: document.getElementById('desc').value,
+            type: document.getElementById('type').value,
+            status: document.getElementById('initialStatus').value
         };
 
         data.push(newItem);
@@ -253,50 +237,39 @@
         clearInputs();
     }
 
-    // TAHRIRLASHNI BOSHLASH
     function startEdit(id) {
         editId = id;
         const item = data.find(i => i.id === id);
-        
         document.getElementById('customDate').value = item.date;
         document.getElementById('name').value = item.name;
         document.getElementById('amount').value = formatNumber(item.amount);
         document.getElementById('category').value = item.category;
+        document.getElementById('route').value = item.route;
+        document.getElementById('ticketNum').value = item.ticketNum;
         document.getElementById('desc').value = item.desc;
         document.getElementById('type').value = item.type;
         document.getElementById('initialStatus').value = item.status;
         
-        if(item.category === 'Aviabilet') {
-            document.getElementById('route').value = item.route;
-            document.getElementById('ticketNum').value = item.ticketNum;
-        }
-        
         toggleFlightFields();
-
-        // Tugmalarni almashtirish
         document.getElementById('btnAdd').style.display = 'none';
         document.getElementById('btnUpdate').style.display = 'block';
         document.getElementById('btnCancel').style.display = 'block';
-        document.getElementById('formTitle').innerText = "Ma'lumotni tahrirlash";
-        document.getElementById('formTitle').style.color = "var(--warning)";
-        
+        document.getElementById('formTitle').innerText = "Tahrirlash Rejimi";
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // TAHRIRNI SAQLASH
     function saveEdit() {
-        const index = data.findIndex(i => i.id === editId);
-        if(index !== -1) {
-            data[index].date = document.getElementById('customDate').value;
-            data[index].name = document.getElementById('name').value;
-            data[index].amount = parseFloat(document.getElementById('amount').value.replace(/\s/g, ""));
-            data[index].category = document.getElementById('category').value;
-            data[index].route = data[index].category === 'Aviabilet' ? document.getElementById('route').value : '';
-            data[index].ticketNum = data[index].category === 'Aviabilet' ? document.getElementById('ticketNum').value : '';
-            data[index].desc = document.getElementById('desc').value;
-            data[index].type = document.getElementById('type').value;
-            data[index].status = document.getElementById('initialStatus').value;
-
+        const idx = data.findIndex(i => i.id === editId);
+        if(idx !== -1) {
+            data[idx].date = document.getElementById('customDate').value;
+            data[idx].name = document.getElementById('name').value;
+            data[idx].amount = parseFloat(document.getElementById('amount').value.replace(/\s/g, ""));
+            data[idx].category = document.getElementById('category').value;
+            data[idx].route = document.getElementById('route').value;
+            data[idx].ticketNum = document.getElementById('ticketNum').value;
+            data[idx].desc = document.getElementById('desc').value;
+            data[idx].type = document.getElementById('type').value;
+            data[idx].status = document.getElementById('initialStatus').value;
             cancelEdit();
             updateUI();
         }
@@ -309,7 +282,6 @@
         document.getElementById('btnUpdate').style.display = 'none';
         document.getElementById('btnCancel').style.display = 'none';
         document.getElementById('formTitle').innerText = "Moliya va To'lov Nazorati";
-        document.getElementById('formTitle').style.color = "var(--primary)";
     }
 
     function clearInputs() {
@@ -319,51 +291,30 @@
         document.getElementById('route').value = '';
         document.getElementById('ticketNum').value = '';
         resetDate();
-        toggleFlightFields();
-    }
-
-    function toggleStatus(id) {
-        const index = data.findIndex(item => item.id === id);
-        if (index !== -1) {
-            data[index].status = (data[index].status === 'paid') ? 'unpaid' : 'paid';
-            updateUI();
-        }
-    }
-
-    function deleteItem(id) {
-        if(confirm("Ushbu ma'lumot o'chirilsinmi?")) {
-            data = data.filter(item => item.id !== id);
-            updateUI();
-        }
     }
 
     function updateUI() {
         localStorage.setItem('paymentControlData', JSON.stringify(data));
         const listBody = document.getElementById('listBody');
         listBody.innerHTML = '';
+        let inc = 0, exp = 0;
 
-        let income = 0; let expense = 0;
-        data.sort((a, b) => new Date(b.date) - new Date(a.date));
+        data.sort((a,b) => new Date(b.date) - new Date(a.date));
 
         data.forEach(item => {
-            if(item.type === 'income') income += item.amount;
-            else expense += item.amount;
-
-            const isPaid = item.status === 'paid';
+            if(item.type === 'income') inc += item.amount; else exp += item.amount;
             const tr = document.createElement('tr');
             tr.innerHTML = `
+                <td><input type="checkbox" class="select-row" data-id="${item.id}"></td>
                 <td>${item.date}</td>
                 <td><strong>${item.name}</strong></td>
-                <td>
-                    <b>${item.category}</b>
-                    ${item.category === 'Aviabilet' ? `<span class="flight-info">📍 ${item.route} <br> 🎫 ${item.ticketNum}</span>` : ''}
-                </td>
-                <td style="font-weight: bold; color: ${item.type === 'income' ? 'green' : 'red'}">
+                <td>${item.category} ${item.route ? `<br><small class="flight-info">${item.route}</small>` : ''}</td>
+                <td style="color: ${item.type === 'income' ? 'green' : 'red'}; font-weight: bold;">
                     ${item.type === 'income' ? '+' : '-'}${formatNumber(item.amount)}
                 </td>
                 <td>
-                    <button class="status-badge ${isPaid ? 'status-paid' : 'status-unpaid'}" onclick="toggleStatus(${item.id})">
-                        ${isPaid ? '✅ To\'lov qildi' : '❌ To\'lov qilmadi'}
+                    <button class="status-badge ${item.status==='paid'?'status-paid':'status-unpaid'}" onclick="toggleStatus(${item.id})">
+                        ${item.status==='paid'?'✅ To\'langan':'❌ Qarz'}
                     </button>
                 </td>
                 <td><small>${item.desc || '-'}</small></td>
@@ -375,28 +326,55 @@
             listBody.appendChild(tr);
         });
 
-        document.getElementById('totalIncome').innerText = formatNumber(income);
-        document.getElementById('totalExpense').innerText = formatNumber(expense);
-        document.getElementById('totalBalance').innerText = formatNumber(income - expense);
+        document.getElementById('totalIncome').innerText = formatNumber(inc);
+        document.getElementById('totalExpense').innerText = formatNumber(exp);
+        document.getElementById('totalBalance').innerText = formatNumber(inc - exp);
+        document.getElementById('selectAll').checked = false;
+    }
+
+    function toggleStatus(id) {
+        const idx = data.findIndex(i => i.id === id);
+        data[idx].status = data[idx].status === 'paid' ? 'unpaid' : 'paid';
+        updateUI();
+    }
+
+    function deleteItem(id) {
+        if(confirm("Ushbu ma'lumot o'chirilsinmi?")) {
+            data = data.filter(i => i.id !== id);
+            updateUI();
+        }
+    }
+
+    // TANLANGANLARNI O'CHIRISH
+    function toggleSelectAll(master) {
+        document.querySelectorAll('.select-row').forEach(cb => cb.checked = master.checked);
+    }
+
+    function deleteSelected() {
+        const selectedCbs = document.querySelectorAll('.select-row:checked');
+        if(selectedCbs.length === 0) return alert("Hech qaysi qator tanlanmagan!");
+        
+        if(confirm(`${selectedCbs.length} ta ma'lumotni o'chirib tashlamoqchimisiz?`)) {
+            const idsToDelete = Array.from(selectedCbs).map(cb => parseInt(cb.dataset.id));
+            data = data.filter(item => !idsToDelete.includes(item.id));
+            updateUI();
+        }
+    }
+
+    // HAMMASINI O'CHIRISH
+    function clearAllData() {
+        if(confirm("DIQQAT! Barcha saqlangan ma'lumotlar butunlay o'chib ketadi. Rozimisiz?")) {
+            data = [];
+            updateUI();
+        }
     }
 
     function exportToExcel() {
-        if(data.length === 0) return;
-        const excelData = data.map(item => ({
-            "Sana": item.date,
-            "Ism": item.name,
-            "Bo'lim": item.category,
-            "Yo'nalish": item.route,
-            "Bilet Raqami": item.ticketNum,
-            "Summa": item.amount,
-            "Turi": item.type === 'income' ? "Kirim" : "Chiqim",
-            "To'lov Holati": item.status === 'paid' ? "To'lov qildi" : "Hali to'lov qilmadi",
-            "Izoh": item.desc
-        }));
-        const worksheet = XLSX.utils.json_to_sheet(excelData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Moliya_Hisoboti");
-        XLSX.writeFile(workbook, "Moliya_va_To'lovlar.xlsx");
+        if(data.length === 0) return alert("Ma'lumot mavjud emas!");
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Hisobot");
+        XLSX.writeFile(wb, "Moliya_Hisoboti.xlsx");
     }
 </script>
 
