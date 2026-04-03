@@ -20,7 +20,6 @@
         
         h2 { text-align: center; color: var(--primary); margin-bottom: 30px; }
 
-        /* Inputlar paneli */
         .inputs {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -37,7 +36,6 @@
 
         input, select, button { padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 14px; outline: none; }
         
-        /* Aviabilet detallari */
         #flight-details {
             grid-column: 1 / -1;
             display: none;
@@ -50,6 +48,8 @@
         }
 
         .btn-add { background: var(--success); color: white; border: none; cursor: pointer; font-weight: bold; height: 48px; margin-top: auto; }
+        .btn-update { background: var(--warning); color: white; border: none; cursor: pointer; font-weight: bold; height: 48px; margin-top: auto; display: none; }
+        .btn-cancel { background: #95a5a6; color: white; border: none; cursor: pointer; font-weight: bold; height: 48px; margin-top: auto; display: none; }
         .btn-excel { background: var(--info); color: white; border: none; cursor: pointer; font-weight: bold; padding: 10px 20px; border-radius: 8px; }
 
         .status-badge {
@@ -85,17 +85,20 @@
         th { background: #f4f6f8; color: var(--primary); }
         
         .flight-info { font-size: 12px; color: #2980b9; display: block; margin-top: 4px; }
+        
+        .btn-action { display: flex; gap: 5px; }
+        .edit-btn { background: #f1c40f; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
         .delete-btn { background: #eee; color: #666; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
         .delete-btn:hover { background: #e74c3c; color: white; }
+        .edit-btn:hover { background: #d4ac0d; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Moliya va To'lov Nazorati</h2>
+    <h2 id="formTitle">Moliya va To'lov Nazorati</h2>
 
     <div class="inputs">
-        <!-- YANGI: SANA KIRITISH -->
         <div class="input-group">
             <label>Sana</label>
             <input type="date" id="customDate">
@@ -124,7 +127,7 @@
 
         <div id="flight-details">
             <div class="input-group">
-                <label>Yo'nalish (Qayerdan - Qayerga)</label>
+                <label>Yo'nalish</label>
                 <input type="text" id="route" placeholder="Toshkent - Istanbul">
             </div>
             <div class="input-group">
@@ -154,7 +157,10 @@
             </select>
         </div>
 
-        <button class="btn-add" onclick="addItem()">Ro'yxatga qo'shish</button>
+        <!-- Tugmalar -->
+        <button class="btn-add" id="btnAdd" onclick="addItem()">Ro'yxatga qo'shish</button>
+        <button class="btn-update" id="btnUpdate" onclick="saveEdit()">O'zgarishlarni saqlash</button>
+        <button class="btn-cancel" id="btnCancel" onclick="cancelEdit()">Bekor qilish</button>
     </div>
 
     <div class="summary-boxes">
@@ -178,7 +184,7 @@
                     <th>Summa (so'm)</th>
                     <th>To'lov holati</th>
                     <th>Izoh</th>
-                    <th>Amal</th>
+                    <th>Amallar</th>
                 </tr>
             </thead>
             <tbody id="listBody"></tbody>
@@ -188,12 +194,17 @@
 
 <script>
     let data = JSON.parse(localStorage.getItem('paymentControlData')) || [];
+    let editId = null; // Tahrirlanayotgan qator IDsi
 
-    // Sahifa yuklanganda bugungi sanani inputga qo'yish
     window.onload = function() {
+        resetDate();
+        updateUI();
+    };
+
+    function resetDate() {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('customDate').value = today;
-    };
+    }
 
     function formatNumber(num) {
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -211,7 +222,7 @@
     }
 
     function addItem() {
-        const selectedDate = document.getElementById('customDate').value; // Foydalanuvchi tanlagan sana
+        const selectedDate = document.getElementById('customDate').value;
         const name = document.getElementById('name').value;
         const amountStr = document.getElementById('amount').value.replace(/\s/g, "");
         const category = document.getElementById('category').value;
@@ -228,25 +239,87 @@
 
         const newItem = {
             id: Date.now(),
-            date: selectedDate, // Tanlangan sana saqlanadi
+            date: selectedDate,
             name,
             amount: parseFloat(amountStr),
             category,
             route: category === 'Aviabilet' ? route : '',
             ticketNum: category === 'Aviabilet' ? ticketNum : '',
-            desc, type,
-            status: status
+            desc, type, status
         };
 
         data.push(newItem);
         updateUI();
+        clearInputs();
+    }
+
+    // TAHRIRLASHNI BOSHLASH
+    function startEdit(id) {
+        editId = id;
+        const item = data.find(i => i.id === id);
         
-        // Inputlarni tozalash (sanadan tashqari)
+        document.getElementById('customDate').value = item.date;
+        document.getElementById('name').value = item.name;
+        document.getElementById('amount').value = formatNumber(item.amount);
+        document.getElementById('category').value = item.category;
+        document.getElementById('desc').value = item.desc;
+        document.getElementById('type').value = item.type;
+        document.getElementById('initialStatus').value = item.status;
+        
+        if(item.category === 'Aviabilet') {
+            document.getElementById('route').value = item.route;
+            document.getElementById('ticketNum').value = item.ticketNum;
+        }
+        
+        toggleFlightFields();
+
+        // Tugmalarni almashtirish
+        document.getElementById('btnAdd').style.display = 'none';
+        document.getElementById('btnUpdate').style.display = 'block';
+        document.getElementById('btnCancel').style.display = 'block';
+        document.getElementById('formTitle').innerText = "Ma'lumotni tahrirlash";
+        document.getElementById('formTitle').style.color = "var(--warning)";
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // TAHRIRNI SAQLASH
+    function saveEdit() {
+        const index = data.findIndex(i => i.id === editId);
+        if(index !== -1) {
+            data[index].date = document.getElementById('customDate').value;
+            data[index].name = document.getElementById('name').value;
+            data[index].amount = parseFloat(document.getElementById('amount').value.replace(/\s/g, ""));
+            data[index].category = document.getElementById('category').value;
+            data[index].route = data[index].category === 'Aviabilet' ? document.getElementById('route').value : '';
+            data[index].ticketNum = data[index].category === 'Aviabilet' ? document.getElementById('ticketNum').value : '';
+            data[index].desc = document.getElementById('desc').value;
+            data[index].type = document.getElementById('type').value;
+            data[index].status = document.getElementById('initialStatus').value;
+
+            cancelEdit();
+            updateUI();
+        }
+    }
+
+    function cancelEdit() {
+        editId = null;
+        clearInputs();
+        document.getElementById('btnAdd').style.display = 'block';
+        document.getElementById('btnUpdate').style.display = 'none';
+        document.getElementById('btnCancel').style.display = 'none';
+        document.getElementById('formTitle').innerText = "Moliya va To'lov Nazorati";
+        document.getElementById('formTitle').style.color = "var(--primary)";
+    }
+
+    function clearInputs() {
         document.getElementById('name').value = '';
         document.getElementById('amount').value = '';
         document.getElementById('desc').value = '';
         document.getElementById('route').value = '';
         document.getElementById('ticketNum').value = '';
+        resetDate();
+        toggleFlightFields();
     }
 
     function toggleStatus(id) {
@@ -270,8 +343,6 @@
         listBody.innerHTML = '';
 
         let income = 0; let expense = 0;
-
-        // Ma'lumotlarni sanasi bo'yicha tartiblash (ixtiyoriy)
         data.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         data.forEach(item => {
@@ -279,7 +350,6 @@
             else expense += item.amount;
 
             const isPaid = item.status === 'paid';
-            
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${item.date}</td>
@@ -297,7 +367,10 @@
                     </button>
                 </td>
                 <td><small>${item.desc || '-'}</small></td>
-                <td><button class="delete-btn" onclick="deleteItem(${item.id})">O'chirish</button></td>
+                <td class="btn-action">
+                    <button class="edit-btn" onclick="startEdit(${item.id})">✏️</button>
+                    <button class="delete-btn" onclick="deleteItem(${item.id})">🗑️</button>
+                </td>
             `;
             listBody.appendChild(tr);
         });
@@ -325,9 +398,6 @@
         XLSX.utils.book_append_sheet(workbook, worksheet, "Moliya_Hisoboti");
         XLSX.writeFile(workbook, "Moliya_va_To'lovlar.xlsx");
     }
-
-    toggleFlightFields();
-    updateUI();
 </script>
 
 </body>
